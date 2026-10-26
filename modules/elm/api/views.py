@@ -117,6 +117,18 @@ class DecideLeaveApplicationView(APIView):
 
         try:
             UUID(str(application_id))
+            application = LeaveApplication.objects.get(pk=application_id)
+            approver_id = str(getattr(actor, "id", ""))
+            if not approver_id:
+                return Response(
+                    {"detail": "Approver identity is unavailable."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if application.employee_id == approver_id:
+                return Response(
+                    {"detail": "You cannot approve or reject your own leave application."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             decision = request.data.get("decision", "")
             if decision not in ("approve", "reject"):
                 return Response(
@@ -126,7 +138,7 @@ class DecideLeaveApplicationView(APIView):
 
             application = decide_leave(
                 application_id=application_id,
-                approver_id=str(getattr(actor, "id", "")),
+                approver_id=approver_id,
                 approve=(decision == "approve"),
                 decision_note=str(request.data.get("decision_note", "")),
             )
@@ -173,11 +185,10 @@ class LeaveLifecycleView(APIView):
         try:
             application = LeaveApplication.objects.get(pk=application_id)
             # Self-service lifecycle actions may only target the actor's own request.
-            if action in {"withdraw", "cancel", "extend", "resume"} and application.employee_id != actor_id:
-                from core.api.exceptions import PermissionDeniedError
-                raise PermissionDeniedError(
-                    "You may only change your own leave application.",
-                    code="permission_denied",
+            if application.employee_id != actor_id:
+                return Response(
+                    {"detail": "You may only change your own leave application."},
+                    status=status.HTTP_403_FORBIDDEN,
                 )
             application = transition_leave(
                 application_id=application_id,
