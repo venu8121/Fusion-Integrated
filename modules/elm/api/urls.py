@@ -4,6 +4,7 @@ from django.urls import path
 
 from modules.elm.api.views import (
     DecideLeaveApplicationView,
+    LeaveLifecycleView,
     MyLeaveApplicationsView,
     SubmitLeaveApplicationView,
 )
@@ -20,6 +21,11 @@ urlpatterns = [
         "apply/",
         SubmitLeaveApplicationView.as_view(),
         name="apply",
+    ),
+    path(
+        "applications/<uuid:application_id>/lifecycle/",
+        LeaveLifecycleView.as_view(),
+        name="leave-lifecycle",
     ),
     path(
         "applications/<uuid:application_id>/decision/",
