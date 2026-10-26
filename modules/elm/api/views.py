@@ -12,6 +12,7 @@ from modules.elm.services.applications import (
     LeaveApplicationError,
     decide_leave,
     submit_leave,
+    transition_leave,
 )
 from modules.elm.services.authz import require
 
@@ -25,6 +26,9 @@ def serialize_application(application):
         "start_date": application.start_date.isoformat(),
         "end_date": application.end_date.isoformat(),
         "reason": application.reason,
+        "start_half": application.start_half,
+        "end_half": application.end_half,
+        "requested_days": str(application.requested_days),
         "status": application.status,
         "approver_id": application.approver_id,
         "decision_note": application.decision_note,
@@ -89,6 +93,8 @@ class SubmitLeaveApplicationView(APIView):
                 start_date=start_date,
                 end_date=end_date,
                 reason=str(data.get("reason", "")),
+                start_half=str(data.get("start_half", "")),
+                end_half=str(data.get("end_half", "")),
             )
         except (ValueError, TypeError, LeaveApplicationError) as exc:
             return Response(
@@ -135,4 +141,55 @@ class DecideLeaveApplicationView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        return Response(serialize_application(application))
+
+
+
+class LeaveLifecycleView(APIView):
+    """Withdraw, cancel, request an extension, or record resumption."""
+
+    def post(self, request, application_id):
+        actor = get_actor(request)
+        action = request.data.get("action", "")
+        permission_by_action = {
+            "withdraw": "elm.application.withdraw",
+            "cancel": "elm.application.cancel",
+            "extend": "elm.application.extend",
+            "resume": "elm.application.resume",
+        }
+        permission = permission_by_action.get(action)
+        if permission is None:
+            return Response(
+                {"detail": "Action must be withdraw, cancel, extend, or resume."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        require(actor, permission)
+        actor_id = str(getattr(actor, "id", ""))
+        if not actor_id:
+            return Response(
+                {"detail": "Actor identity is unavailable."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            application = LeaveApplication.objects.get(pk=application_id)
+            # Self-service lifecycle actions may only target the actor's own request.
+            if action in {"withdraw", "cancel", "extend", "resume"} and application.employee_id != actor_id:
+                from core.api.exceptions import PermissionDeniedError
+                raise PermissionDeniedError(
+                    "You may only change your own leave application.",
+                    code="permission_denied",
+                )
+            application = transition_leave(
+                application_id=application_id,
+                actor_id=actor_id,
+                action=action,
+                note=str(request.data.get("note", "")),
+            )
+        except LeaveApplication.DoesNotExist:
+            return Response(
+                {"detail": "Leave application not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except LeaveApplicationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serialize_application(application))
