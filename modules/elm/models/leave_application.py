@@ -25,6 +25,9 @@ class LeaveApplication(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     reason = models.TextField()
+    start_half = models.CharField(max_length=8, blank=True, default="")
+    end_half = models.CharField(max_length=8, blank=True, default="")
+    requested_days = models.DecimalField(max_digits=6, decimal_places=2, default=0)
 
     status = models.CharField(
         max_length=32,
