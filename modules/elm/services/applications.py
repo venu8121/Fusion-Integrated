@@ -1,6 +1,5 @@
 """Application operations for Employee Leave Management."""
 from datetime import date
-from decimal import Decimal
 
 from django.db import transaction
 from django.utils import timezone
@@ -10,8 +9,8 @@ from modules.elm.services.policy import (
     PolicyValidationError,
     SUPPORTED_LEAVE_TYPES,
     count_leave_days,
-    intervals_overlap,
     LeaveInterval,
+    intervals_overlap,
 )
 
 
@@ -67,8 +66,10 @@ def submit_leave(
         start_date__lte=end_date,
         end_date__gte=start_date,
     )
-    candidate = LeaveInterval(start_date, end_date, leave_type,
-                              LeaveApplication.Status.SUBMITTED, start_half, end_half)
+    candidate = LeaveInterval(
+        start_date, end_date, leave_type,
+        LeaveApplication.Status.SUBMITTED, start_half, end_half,
+    )
     for item in existing:
         other = LeaveInterval(
             item.start_date, item.end_date, item.leave_type, item.status,
@@ -102,7 +103,9 @@ def decide_leave(
     decision_note: str = "",
 ) -> LeaveApplication:
     """Record a decision only while the application is awaiting a decision."""
-    application = LeaveApplication.objects.select_for_update().get(pk=application_id)
+    application = LeaveApplication.objects.select_for_update().get(
+        pk=application_id
+    )
     if application.status not in {
         LeaveApplication.Status.SUBMITTED,
         LeaveApplication.Status.PENDING_APPROVAL,
@@ -149,7 +152,10 @@ def transition_leave(*, application_id, actor_id: str, action: str, note: str = 
         )
     application.status = target
     # Preserve a decision note/audit hint without overwriting an existing note.
-    stamp = f"[{timezone.now().isoformat()}] {action} by {actor_id}: {note.strip()}".strip()
+    stamp = (
+        f"[{timezone.now().isoformat()}] {action} by {actor_id}: "
+        f"{note.strip()}"
+    ).strip()
     application.decision_note = (
         f"{application.decision_note}\n{stamp}".strip()
         if application.decision_note else stamp
