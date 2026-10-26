@@ -72,7 +72,7 @@ def submit_leave(
     for item in existing:
         other = LeaveInterval(
             item.start_date, item.end_date, item.leave_type, item.status,
-            getattr(item, "start_half", ""), getattr(item, "end_half", ""),
+            item.start_half, item.end_half,
         )
         if intervals_overlap(candidate, other):
             raise LeaveApplicationError(
@@ -85,6 +85,9 @@ def submit_leave(
         start_date=start_date,
         end_date=end_date,
         reason=reason,
+        start_half=start_half,
+        end_half=end_half,
+        requested_days=days_requested,
         status=LeaveApplication.Status.SUBMITTED,
         submitted_at=timezone.now(),
     )
