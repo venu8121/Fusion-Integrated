@@ -90,6 +90,7 @@ PLATFORM_MODULES = [
 # See docs/03-platform/module-authoring-guide.md to add one.
 DOMAIN_MODULES = [
     "modules.placement",
+    "modules.lms",
 ]
 
 INSTALLED_APPS = (DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -132,6 +133,8 @@ DATABASES = {
     }
 }
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+LMS_COURSE_ACCESS_PROVIDER = env("LMS_COURSE_ACCESS_PROVIDER", "")
 
 # The IAM. This service is a client of it and caches nothing it cannot rebuild.
 IAM_BASE_URL = env("IAM_BASE_URL", "http://127.0.0.1:8001")

@@ -8,6 +8,8 @@ from modules.placement.schedule import (
 from modules.placement.schedule import (
     TASK_ROUTES as PLACEMENT_ROUTES,
 )
+from modules.lms.schedule import BEAT_SCHEDULE as LMS_SCHEDULE
+from modules.lms.schedule import TASK_ROUTES as LMS_ROUTES
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.dev")
 app = Celery("fusion_integrated")
